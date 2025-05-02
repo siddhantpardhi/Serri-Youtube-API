@@ -21,9 +21,16 @@ axiosInstance.defaults.raxConfig = {
 };
 
 rax.attach(axiosInstance);
+let currentKeyIndex = 0
 
 async function fetchYouTubeVideos() {
   try {
+
+    const apiKeys = process.env.YOUTUBE_API_KEY.split(",")
+    console.log("🚀 ~ fetchYouTubeVideos ~ apiKeys:", apiKeys.length)
+    const apiKey = apiKeys[currentKeyIndex];
+    currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+    console.log("🚀 ~ fetchYouTubeVideos ~ apiKey:", apiKey)
 
     const latestVideo = await Video.findOne().sort({ publishedAt: -1 });
 
@@ -34,7 +41,7 @@ async function fetchYouTubeVideos() {
     const response = await axiosInstance.get(YT_API_URL, {
       timeout: 5000,
       params: {
-        key: process.env.YOUTUBE_API_KEY,
+        key: apiKey,
         q: SEARCH_QUERY,
         part: 'snippet',
         type: 'video',
@@ -69,7 +76,7 @@ async function fetchYouTubeVideos() {
       await Video.bulkWrite(operations);
       const keys = await redisClient.keys('videos:*');
       if (keys.length > 0) {
-        console.log("Deleting cache: ",keys)
+        console.log("Deleting cache: ", keys)
         await redisClient.del(keys);
       }
       console.log('Fetched and saved videos');
