@@ -30,11 +30,11 @@ This project fetches the latest YouTube videos for a predefined search query, st
 
 ```bash
 git clone https://github.com/siddhantpardhi/Serri-Youtube-API.git
-cd Serri-Youtube-API
 ```
 ### 2. Install Dependencies
 
 ```bash
+cd Serri-Youtube-API
 npm install
 ```
 ### 3. Configure Environment Variables
