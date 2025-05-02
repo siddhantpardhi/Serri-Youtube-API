@@ -4,7 +4,7 @@ import redisClient from "../utils/redisClient.js";
 export const getAllVideos = async (req, res) => {
 
     try {
-        const page = Math.max(parseInt(req.query.page) || 0, 1)
+        const page = Math.max(parseInt(req.query.page) || 0, 1) // making sure even if user passes NaN, 0 or negative value, it gets 1 by default
         let parsedLimit = parseInt(req.query.limit);
         const limit = Math.min(Math.max(!isNaN(parsedLimit) ? parsedLimit : 10, 1), 50);
 
@@ -12,18 +12,18 @@ export const getAllVideos = async (req, res) => {
 
        try {
          const cacheKey = `videos:all:page=${page}&limit=${limit}`;
-         const cachedData = await redisClient.get(cacheKey);
+         const cachedData = await redisClient.get(cacheKey); // retrieving redis cache
  
          if (cachedData) {
              console.log("Hello Redis Cache Get All Videos")
-             return res.status(200).json(JSON.parse(cachedData));
+             return res.status(200).json(JSON.parse(cachedData)); // if cache exists, returning it 
          }
        } catch (error) {
         console.error("Redis Get Error: ", error);
         
        }
 
-        const videosPromise = Video.find({})
+        const videosPromise = Video.find({}) 
             .sort({ publishedAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -43,7 +43,7 @@ export const getAllVideos = async (req, res) => {
         }
 
         try {
-            await redisClient.setEx(cacheKey, 600, JSON.stringify(response))
+            await redisClient.setEx(cacheKey, 600, JSON.stringify(response)) //setting redis cache 
         } catch (error) {
             console.error("Redis Set Error: ", error)
         }
@@ -65,7 +65,7 @@ export const searchVideo = async (req, res) => {
         const limit = Math.min(Math.max(!isNaN(parsedLimit) ? parsedLimit : 10, 1), 50);
 
 
-        if (!q || q.trim() === "") return res.status(400).json({ error: 'Missing search query (q)' })
+        if (!q || q.trim() === "") return res.status(400).json({ error: 'Missing search query (q)' }) // making sure q is not a falsy value or an empty string with spaces
 
 
         const skip = (page - 1) * limit
@@ -101,7 +101,7 @@ export const searchVideo = async (req, res) => {
             resultLength: videos.length
         }
 
-        await redisClient.setEx(cacheKey, 600, JSON.stringify(response));
+        await redisClient.setEx(cacheKey, 600, JSON.stringify(response)); // setting redis cache
 
         res.status(200).json(response)
     } catch (error) {

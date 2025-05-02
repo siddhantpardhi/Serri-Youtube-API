@@ -15,11 +15,9 @@ import videoRoutes from "./routes/video.route.js"
 
 app.use("/api/v1/videos", videoRoutes )
 
-// Placeholder route
 app.get('/', (req, res) => {
   res.send('YouTube Video API is running');
 });
-
 
 // Connect to MongoDB and start polling
 mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)

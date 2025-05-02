@@ -5,22 +5,22 @@ import schedule from "node-schedule"
 import { SEARCH_QUERY, INTERVAL, YT_API_URL } from './constants.js';
 import redisClient from './utils/redisClient.js';
 
-const axiosInstance = axios.create();
-axiosInstance.defaults.raxConfig = {
+const axiosInstance = axios.create(); // creating an axios Instance
+axiosInstance.defaults.raxConfig = { // setting retry configuration for axios instance using rax(retry axios)
   instance: axiosInstance,
   retry: 5, // total attempts = 1 original + 4 retries
-  noResponseRetries: 2,
-  retryDelay: 1000, // base delay in ms
-  backoffType: 'exponential',
-  httpMethodsToRetry: ['GET', 'POST'],
-  statusCodesToRetry: [[429, 429], [500, 599]],
-  onRetryAttempt: err => {
+  noResponseRetries: 2, // allows 2 retries even if there’s no response from the server 
+  retryDelay: 1000, // base delay between retries
+  backoffType: 'exponential', // retry delay will increase exponentially
+  httpMethodsToRetry: ['GET', 'POST'], // only GET and POST requests will be retried.
+  statusCodesToRetry: [[429, 429], [500, 599]], // only 429(too many requests) and 5xx server error will be retried
+  onRetryAttempt: err => { // function runs on each retry attempt
     const cfg = rax.getConfig(err);
     console.warn(`Retry attempt #${cfg?.currentRetryAttempt}`);
   }
 };
 
-rax.attach(axiosInstance);
+rax.attach(axiosInstance); // this attaches retry-axios logic to the axios instance
 let currentKeyIndex = 0
 
 async function fetchYouTubeVideos() {
@@ -38,7 +38,7 @@ async function fetchYouTubeVideos() {
     const publishedAfter = latestVideo ? latestVideo.publishedAt.toISOString() : new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString();
     // console.log("🚀 ~ fetchYouTubeVideos ~ publishedAfter:", publishedAfter)
 
-    const response = await axiosInstance.get(YT_API_URL, {
+    const response = await axiosInstance.get(YT_API_URL, { // fetching videos that are published after latestVideo
       timeout: 5000,
       params: {
         key: apiKey,
@@ -74,10 +74,10 @@ async function fetchYouTubeVideos() {
 
     if (operations.length > 0) {
       await Video.bulkWrite(operations);
-      const keys = await redisClient.keys('videos:*');
+      const keys = await redisClient.keys('videos:*'); // retrieving redis cache data if it exists
       if (keys.length > 0) {
         console.log("Deleting cache: ", keys)
-        await redisClient.del(keys);
+        await redisClient.del(keys); // deleting cache data if it exists
       }
       console.log('Fetched and saved videos');
     }
@@ -90,7 +90,7 @@ async function fetchYouTubeVideos() {
 export default function startVideoPolling() {
   // setInterval(fetchYouTubeVideos, INTERVAL);
 
-  schedule.scheduleJob(`*/${INTERVAL} * * * * *`, () => {
+  schedule.scheduleJob(`*/${INTERVAL} * * * * *`, () => { // using scheduler over setInterval because scheduler is more flexible if tomorrow requirements change and it is asked that the function should run at a particular time of the day or something like that, it will be helpful
     fetchYouTubeVideos()
   })
 }
