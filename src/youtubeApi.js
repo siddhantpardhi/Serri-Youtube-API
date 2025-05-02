@@ -3,6 +3,7 @@ import * as rax from 'retry-axios';
 import { Video } from './models/video.model.js';
 import schedule from "node-schedule"
 import { SEARCH_QUERY, INTERVAL, YT_API_URL } from './constants.js';
+import redisClient from './utils/redisClient.js';
 
 const axiosInstance = axios.create();
 axiosInstance.defaults.raxConfig = {
@@ -66,9 +67,14 @@ async function fetchYouTubeVideos() {
 
     if (operations.length > 0) {
       await Video.bulkWrite(operations);
+      const keys = await redisClient.keys('videos:*');
+      if (keys.length > 0) {
+        console.log("Deleting cache: ",keys)
+        await redisClient.del(keys);
+      }
+      console.log('Fetched and saved videos');
     }
 
-    console.log('Fetched and saved videos');
   } catch (err) {
     console.error('Error fetching videos:', err.message);
   }

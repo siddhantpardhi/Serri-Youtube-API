@@ -17,6 +17,7 @@
     "express": "^5.1.0",
     "mongoose": "^8.14.1",
     "node-schedule": "^2.1.1",
+    "redis": "^5.0.0",
     "retry-axios": "^3.1.3"
   }
 }

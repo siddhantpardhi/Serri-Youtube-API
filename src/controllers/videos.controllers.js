@@ -1,4 +1,5 @@
 import { Video } from "../models/video.model.js"
+import redisClient from "../utils/redisClient.js";
 
 export const getAllVideos = async (req, res) => {
 
@@ -8,6 +9,19 @@ export const getAllVideos = async (req, res) => {
         const limit = Math.min(Math.max(!isNaN(parsedLimit) ? parsedLimit : 10, 1), 50);
 
         const skip = (page - 1) * limit
+
+       try {
+         const cacheKey = `videos:all:page=${page}&limit=${limit}`;
+         const cachedData = await redisClient.get(cacheKey);
+ 
+         if (cachedData) {
+             console.log("Hello Redis Cache Get All Videos")
+             return res.status(200).json(JSON.parse(cachedData));
+         }
+       } catch (error) {
+        console.error("Redis Get Error: ", error);
+        
+       }
 
         const videosPromise = Video.find({})
             .sort({ publishedAt: -1 })
@@ -20,32 +34,50 @@ export const getAllVideos = async (req, res) => {
 
         const [videos, totalCount] = await Promise.all([videosPromise, totalCountPromise])
 
-        res.status(200).json({
+        const response = {
             page,
             totalPages: Math.ceil(totalCount / limit),
             totalCount,
             videos,
             videosLength: videos.length
-        })
+        }
+
+        try {
+            await redisClient.setEx(cacheKey, 600, JSON.stringify(response))
+        } catch (error) {
+            console.error("Redis Set Error: ", error)
+        }
+
+        res.status(200).json(response)
     } catch (error) {
         console.error("Error while listing all videos: ", error)
+        res.status(500).json({ status: 500, message: "Internal Server Error", error: error})
 
     }
 }
 
 export const searchVideo = async (req, res) => {
-    const { q } = req.query;
-
-    const page = Math.max(parseInt(req.query.page) || 0, 1)
-    let parsedLimit = parseInt(req.query.limit);
-    const limit = Math.min(Math.max(!isNaN(parsedLimit) ? parsedLimit : 10, 1), 50);
-
-
-    if (!q) return res.status(400).json({ error: 'Missing search query (q)' })
-
     try {
+        const { q } = req.query;
+
+        const page = Math.max(parseInt(req.query.page) || 0, 1)
+        let parsedLimit = parseInt(req.query.limit);
+        const limit = Math.min(Math.max(!isNaN(parsedLimit) ? parsedLimit : 10, 1), 50);
+
+
+        if (!q || q.trim() === "") return res.status(400).json({ error: 'Missing search query (q)' })
+
+
         const skip = (page - 1) * limit
         const filter = { $text: { $search: q } };
+
+        const cacheKey = `videos:search:q=${q}&page=${page}&limit=${limit}`;
+        const cachedData = await redisClient.get(cacheKey);
+
+        if (cachedData) {
+            console.log("Hello Redis Cache Search Video")
+            return res.status(200).json(JSON.parse(cachedData));
+        }
 
         const videosPromise = Video.find(
             filter,
@@ -61,14 +93,21 @@ export const searchVideo = async (req, res) => {
 
         const [videos, totalCount] = await Promise.all([videosPromise, totalCountPromise])
 
-        res.status(200).json({
+        const response = {
             page,
             totalPages: Math.ceil(totalCount / limit),
             totalCount,
             results: videos,
             resultLength: videos.length
-        })
-    } catch (err) {
-        res.status(500).json({ error: 'Search failed', details: err.message })
+        }
+
+        await redisClient.setEx(cacheKey, 600, JSON.stringify(response));
+
+        res.status(200).json(response)
+    } catch (error) {
+        console.error("Error while searching user: ", error);
+        res.status(500).json({ status: 500, message: "Internal Server Error", error: error})
+        
     }
+
 }
