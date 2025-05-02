@@ -4,7 +4,7 @@ This project fetches the latest YouTube videos for a predefined search query, st
 
 ## 🚀 Features
 
-- Polls YouTube API every 10 seconds to fetch the latest videos.
+- Polls YouTube API every 10(user can customize this) seconds to fetch the latest videos.
 - Stores video details (title, description, thumbnails, publishedAt) in MongoDB.
 - REST API to retrieve videos in paginated form (sorted by published date).
 - Full-text search API on title and description.
