@@ -10,8 +10,9 @@ export const getAllVideos = async (req, res) => {
 
         const skip = (page - 1) * limit
 
+        const cacheKey = `videos:all:page=${page}&limit=${limit}`;
        try {
-         const cacheKey = `videos:all:page=${page}&limit=${limit}`;
+
          const cachedData = await redisClient.get(cacheKey); // retrieving redis cache
  
          if (cachedData) {
@@ -38,8 +39,8 @@ export const getAllVideos = async (req, res) => {
             page,
             totalPages: Math.ceil(totalCount / limit),
             totalCount,
-            videos,
-            videosLength: videos.length
+            videosLength: videos.length,
+            videos
         }
 
         try {
@@ -97,8 +98,8 @@ export const searchVideo = async (req, res) => {
             page,
             totalPages: Math.ceil(totalCount / limit),
             totalCount,
-            results: videos,
-            resultLength: videos.length
+            resultLength: videos.length,
+            results: videos
         }
 
         await redisClient.setEx(cacheKey, 600, JSON.stringify(response)); // setting redis cache
